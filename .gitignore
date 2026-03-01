@@ -1,0 +1,22 @@
+# PlatformIO
+firmware/.pio/
+firmware/.vscode/
+
+# Secrets
+.env
+backend/mosquitto/config/passwd
+
+# Build artifacts
+case/stl/*.stl
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# vexp
+.vexp/
