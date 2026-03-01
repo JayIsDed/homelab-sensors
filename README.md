@@ -1,6 +1,6 @@
 # homelab-sensors
 
-Distributed IoT temperature and humidity monitoring system.
+Distributed IoT temperature and humidity monitoring system using ESPHome.
 
 ## Hardware
 
@@ -11,55 +11,73 @@ Distributed IoT temperature and humidity monitoring system.
 ## Stack
 
 ```
-[ESP32-C6 sensors] --MQTTS--> [Traefik:8883] --TCP--> [Mosquitto]
-                                                            |
-                                                      [Telegraf] --> [InfluxDB v2]
-                                                                          |
-                                                                    [Grafana]
+[ESP32-C6 sensors] --ESPHome API--> [Home Assistant]
+                                         |
+                                    [InfluxDB v2] (long-term retention)
+                                         |
+                                    [Grafana] (dashboards)
 ```
 
 ## Features
 
-- BLE WiFi provisioning (works on any network globally)
-- TLS-encrypted MQTT with per-sensor authentication
-- Factory reset via hardware pin
-- LED status indicators (provisioning/connected/error)
-- Pre-built Grafana dashboards
+- **ESPHome** — YAML-based config, native HA auto-discovery, OTA updates
+- **Captive portal** — WiFi fallback AP for easy re-provisioning
+- **Factory reset** — Hold GPIO2 for 3 seconds to wipe config
+- **Status LED** — GPIO15 shows connection state
+- **Web server** — Built-in debug UI on each sensor's IP
+- **Calibration** — Per-sensor temperature/humidity offset in YAML
 - Parametric 3D-printable enclosure (OpenSCAD)
 
 ## Quick Start
 
-See [docs/setup-guide.md](docs/setup-guide.md) for full deployment instructions.
-
-### Backend
+### 1. Backend
 
 ```bash
 # Add sensor services to homelab docker-compose
-# Configure .env with credentials
-docker compose up -d mosquitto telegraf influxdb grafana
+docker compose up -d influxdb grafana
 ```
 
-### Firmware
+### 2. Flash a Sensor
 
 ```bash
-cd firmware
-# Edit include/config.h for defaults
-pio run -t upload        # Flash firmware
-pio run -t uploadfs      # Upload CA cert (LittleFS)
+cd esphome
+cp secrets.yaml.example secrets.yaml  # Fill in WiFi + API keys
+esphome run sensor-01.yaml            # Compile + flash via USB
 ```
 
-### Provision a Sensor
+### 3. Provision
 
-1. Power on — LED blinks fast (provisioning mode)
-2. Open [ESP BLE Prov](https://play.google.com/store/apps/details?id=com.espressif.provble) app
-3. Scan → connect → enter PoP PIN → configure WiFi
-4. Connect via serial to set MQTT credentials and sensor ID
-5. Reboot — LED pulses slowly (connected, reporting)
+1. First flash via USB — sensor connects to WiFi automatically
+2. Appears in Home Assistant → Integrations → ESPHome
+3. Click **Configure** → done
+4. For subsequent WiFi changes: sensor creates `sensor-XX-setup` AP
+
+### 4. OTA Updates
+
+After first USB flash, all future updates are wireless:
+
+```bash
+esphome run sensor-01.yaml  # Detects sensor on network, uploads OTA
+```
+
+## Project Structure
+
+```
+esphome/              # ESPHome configs (active)
+├── common/base.yaml  # Shared config (WiFi, sensor, LED, etc.)
+├── secrets.yaml      # Credentials (gitignored)
+├── sensor-01.yaml    # Per-sensor substitutions
+└── ...
+firmware/legacy/      # Original PlatformIO firmware (archived)
+backend/              # Docker configs (Mosquitto, Telegraf, InfluxDB, Grafana)
+case/                 # OpenSCAD 3D printable enclosure
+docs/                 # Setup guides and architecture
+scripts/              # Utility scripts
+```
 
 ## Documentation
 
 - [Setup Guide](docs/setup-guide.md)
-- [BLE Provisioning](docs/ble-provisioning.md)
 - [Wiring Diagram](docs/wiring.md)
 - [Architecture](docs/architecture.md)
 

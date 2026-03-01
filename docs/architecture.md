@@ -3,48 +3,62 @@
 ## System Overview
 
 ```
-[ESP32-C6 #1-10] --MQTTS:8883--> [Traefik:8883] --TCP--> [Mosquitto:1883]
-                                                                |
-                                                          [Telegraf] --> [InfluxDB:8086]
-                                                                               |
-                                                                        [Grafana:3000]
-                                                                               |
-                                                [User] <--HTTPS:443-- [Traefik:443]
+[ESP32-C6 #1-10] --ESPHome API--> [Home Assistant (RPi)]
+                                         |
+                                    [InfluxDB v2] (long-term)
+                                         |
+                                    [Grafana :3000]
+                                         |
+                        [User] <--HTTPS-- [Traefik :443]
 ```
 
 ## Components
 
-| Component | Role | Network |
-|-----------|------|---------|
-| XIAO ESP32-C6 | Sensor node (temp/humidity) | Any WiFi → MQTTS |
-| Traefik | Reverse proxy, TLS termination | Ports 80, 443, 8883 |
-| Mosquitto | MQTT broker | Internal (1883) |
-| Telegraf | MQTT → InfluxDB bridge | Internal |
-| InfluxDB v2 | Time-series database | Internal (8086) |
-| Grafana | Dashboard/visualization | Internal (3000) |
+| Component | Role | Location |
+|-----------|------|----------|
+| XIAO ESP32-C6 | Sensor node (temp/humidity) | Any WiFi network |
+| Home Assistant | Central hub, auto-discovery | RPi @ 192.168.8.127 |
+| InfluxDB v2 | Long-term time-series storage | Docker @ homelab |
+| Grafana | Analytics dashboards | Docker @ homelab |
+| Traefik | Reverse proxy, HTTPS | Docker @ homelab |
 
 ## Data Flow
 
-1. ESP32-C6 reads SHT31-D sensor via I2C
-2. Publishes JSON to `homelab/sensors/{sensor_id}/data` over MQTTS (port 8883)
-3. Traefik terminates TLS at `mqtt.pancake3d.com:8883`, forwards TCP to Mosquitto:1883
-4. Mosquitto authenticates sensor, enforces ACL
-5. Telegraf subscribes to `homelab/sensors/#`, extracts `sensor_id` from topic
-6. Telegraf writes to InfluxDB v2 bucket `sensors`
-7. Grafana queries InfluxDB via Flux, displays dashboards
+1. ESP32-C6 reads SHT31-D sensor via I2C every 60s
+2. ESPHome native API pushes state to Home Assistant
+3. HA auto-creates entities (temperature, humidity, WiFi signal, uptime)
+4. HA recorder stores short-term history (default 10 days)
+5. HA InfluxDB integration forwards data for long-term retention
+6. Grafana queries InfluxDB for analytics dashboards
 
-## MQTT Topic Structure
+## ESPHome Sensor Config
 
+Each sensor is a ~12 line YAML file that inherits from `common/base.yaml`:
+
+```yaml
+substitutions:
+  device_name: sensor-01
+  friendly_name: "Sensor 01"
+  location: "living-room"
+  update_interval: "60s"
+  temp_offset: "0.0"
+  humidity_offset: "0.0"
+
+packages:
+  base: !include common/base.yaml
 ```
-homelab/sensors/{sensor_id}/data    # Sensor publishes here
-homelab/sensors/#                   # Telegraf subscribes here
-```
+
+## WiFi Provisioning
+
+- **First flash:** USB via `esphome run sensor-XX.yaml`
+- **WiFi change:** Sensor creates fallback AP (`sensor-XX-setup`) with captive portal
+- **OTA updates:** All subsequent flashes are wireless
+- **Factory reset:** Hold GPIO2 to GND for 3 seconds
 
 ## Security
 
-- TLS on all external MQTT (Let's Encrypt via Traefik)
-- Unique MQTT credentials per sensor
-- ACL restricts each sensor to its own topic
-- BLE provisioning with Proof of Possession PIN
-- No credentials in source code
-- Grafana/InfluxDB behind HTTPS only
+- ESPHome API encrypted with per-deployment key
+- OTA password protected
+- Fallback AP password protected
+- No credentials in source code (secrets.yaml is gitignored)
+- Grafana/InfluxDB behind HTTPS via Traefik
