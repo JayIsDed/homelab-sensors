@@ -1,0 +1,11 @@
+# Sensor 07 — Update location after deployment
+substitutions:
+  device_name: sensor-07
+  friendly_name: "Sensor 07"
+  location: "unassigned"
+  update_interval: "60s"
+  temp_offset: "0.0"
+  humidity_offset: "0.0"
+
+packages:
+  base: !include common/base.yaml

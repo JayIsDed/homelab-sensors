@@ -1,0 +1,124 @@
+# Base config for all homelab sensors
+# XIAO ESP32-C6 + GY-SHT31-D
+#
+# Usage: Each sensor file sets substitutions and includes this via packages.
+# Secrets are in secrets.yaml (not committed to git).
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  comment: "Homelab sensor — ${location}"
+
+esp32:
+  board: seeed_xiao_esp32c6
+  framework:
+    type: esp-idf
+
+# --- Logging ---
+logger:
+  level: INFO
+
+# --- WiFi ---
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  fast_connect: true
+
+  # Fallback AP for re-provisioning
+  # If WiFi fails, sensor creates its own AP for reconfiguration
+  ap:
+    ssid: "${device_name}-setup"
+    password: !secret ap_password
+
+# Captive portal for fallback AP
+captive_portal:
+
+# --- Home Assistant Native API ---
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+# --- OTA Updates ---
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+# --- Web Server (for debugging — visit sensor IP in browser) ---
+web_server:
+  port: 80
+
+# --- I2C Bus ---
+i2c:
+  sda: GPIO6  # D4
+  scl: GPIO7  # D5
+  scan: true
+
+# --- SHT31-D Sensor ---
+sensor:
+  - platform: sht3xd
+    address: 0x44
+    update_interval: ${update_interval}
+    temperature:
+      name: "${friendly_name} Temperature"
+      id: temperature
+      unit_of_measurement: "°C"
+      accuracy_decimals: 1
+      filters:
+        - offset: ${temp_offset}
+    humidity:
+      name: "${friendly_name} Humidity"
+      id: humidity
+      unit_of_measurement: "%"
+      accuracy_decimals: 1
+      filters:
+        - offset: ${humidity_offset}
+
+  # WiFi signal strength
+  - platform: wifi_signal
+    name: "${friendly_name} WiFi Signal"
+    update_interval: 60s
+
+  # Uptime
+  - platform: uptime
+    name: "${friendly_name} Uptime"
+    unit_of_measurement: "s"
+
+# --- Status LED ---
+status_led:
+  pin:
+    number: GPIO15
+    inverted: false
+
+# --- Diagnostic Sensors ---
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "${friendly_name} IP Address"
+    ssid:
+      name: "${friendly_name} WiFi SSID"
+
+button:
+  # Restart button visible in HA
+  - platform: restart
+    name: "${friendly_name} Restart"
+
+  # Factory reset — clears WiFi credentials + all config
+  - platform: factory_reset
+    name: "${friendly_name} Factory Reset"
+    id: factory_reset
+
+# --- Physical Reset Button (GPIO2 / D0) ---
+# Hold D0 to GND for 3 seconds to factory reset
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO2  # D0
+      mode: INPUT_PULLUP
+      inverted: true
+    name: "${friendly_name} Reset Button"
+    filters:
+      - delayed_on: 3s
+    on_press:
+      then:
+        - logger.log: "Factory reset triggered via GPIO2!"
+        - button.press: factory_reset

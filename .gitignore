@@ -1,6 +1,10 @@
-# PlatformIO
-firmware/.pio/
-firmware/.vscode/
+# PlatformIO (legacy)
+firmware/legacy/.pio/
+firmware/legacy/.vscode/
+
+# ESPHome
+esphome/secrets.yaml
+esphome/.esphome/
 
 # Secrets
 .env

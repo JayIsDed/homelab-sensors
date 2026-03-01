@@ -1,0 +1,11 @@
+# Sensor 04 — Update location after deployment
+substitutions:
+  device_name: sensor-04
+  friendly_name: "Sensor 04"
+  location: "unassigned"
+  update_interval: "60s"
+  temp_offset: "0.0"
+  humidity_offset: "0.0"
+
+packages:
+  base: !include common/base.yaml
