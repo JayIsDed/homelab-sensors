@@ -1,0 +1,10 @@
+# Mosquitto ACL
+# Each sensor can only publish to its own topic
+# Telegraf can read all sensor topics
+
+# Sensor users: can publish to their own data topic only
+pattern write homelab/sensors/%u/data
+
+# Telegraf: can subscribe to all sensor topics
+user telegraf
+topic read homelab/sensors/#
