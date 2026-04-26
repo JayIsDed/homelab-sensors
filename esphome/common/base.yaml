@@ -104,7 +104,7 @@ button:
 
   - platform: factory_reset
     name: "Factory Reset"
-    id: factory_reset
+    id: factory_reset_btn
 
 # Hold D0 to GND for 3 seconds to factory reset
 binary_sensor:
@@ -119,4 +119,4 @@ binary_sensor:
     on_press:
       then:
         - logger.log: "Factory reset triggered via GPIO2!"
-        - button.press: factory_reset
+        - button.press: factory_reset_btn
