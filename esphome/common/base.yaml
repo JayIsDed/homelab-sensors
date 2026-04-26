@@ -58,7 +58,7 @@ i2c:
 # in use across the homelab).
 sensor:
   - platform: sht3xd
-    address: 0x44
+    address: ${sht31_address}
     update_interval: ${update_interval}
     temperature:
       name: "Temp"
