@@ -1,0 +1,10 @@
+substitutions:
+  device_name: kitchen-climate
+  friendly_name: "Kitchen Climate"
+  location: "kitchen"
+  update_interval: "60s"
+  temp_offset: "0.0"
+  humidity_offset: "0.0"
+
+packages:
+  base: !include common/base.yaml
